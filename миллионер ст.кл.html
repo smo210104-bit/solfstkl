@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кто хочет стать миллионером? - Сольфеджио</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #090a16;
+            color: white;
+            user-select: none;
+            overflow: hidden;
+            background-image: radial-gradient(circle at center, #111827 0%, #090a16 100%);
+        }
+
+        /* Hexagonal shape for questions and answers */
+        .hex-shape {
+            clip-path: polygon(4% 0, 96% 0, 100% 50%, 96% 100%, 4% 100%, 0 50%);
+        }
+        
+        .hex-border {
+            clip-path: polygon(3.5% 0, 96.5% 0, 100% 50%, 96.5% 100%, 3.5% 100%, 0 50%);
+            background-color: #eab308;
+            padding: 2px;
+        }
+
+        .question-box {
+            background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+        }
+
+        .answer-box {
+            background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        /* Answer states */
+        .answer-box:hover:not(.disabled):not(.selected):not(.correct):not(.wrong) {
+            box-shadow: inset 0 0 20px rgba(234, 179, 8, 0.5);
+        }
+        
+        .answer-box.selected {
+            background: linear-gradient(180deg, #ca8a04 0%, #a16207 100%);
+        }
+        
+        .answer-box.correct {
+            background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+            animation: pulse-green 1s infinite;
+        }
+        
+        .answer-box.wrong {
+            background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+        }
+
+        .answer-box.disabled {
+            pointer-events: none;
+        }
+
+        /* Lifeline icons */
+        .lifeline {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+        }
+        
+        .lifeline:hover:not(.used) {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.8);
+            cursor: pointer;
+        }
+        
+        .lifeline.used {
+            opacity: 0.3;
+            filter: grayscale(100%);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Prize Ladder */
+        .ladder-item {
+            transition: all 0.2s ease;
+        }
+        
+        .ladder-item.active {
+            background-color: #eab308;
+            color: #090a16;
+            font-weight: 800;
+            border-radius: 4px;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(234, 179, 8, 0.6);
+        }
+        
+        .ladder-item.safe {
+            color: #eab308;
+        }
+        
+        .ladder-item.safe.active {
+            color: #090a16;
+        }
+
+        /* Modals and Animations */
+        .modal-bg {
+            background: rgba(9, 10, 22, 0.9);
+            backdrop-filter: blur(8px);
+        }
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        /* Timer display */
+        .timer-circle {
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            border: 8px solid #eab308;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 4rem; font-weight: 800; color: #eab308;
+            box-shadow: 0 0 30px rgba(234, 179, 8, 0.4);
+        }
+
+        /* Bar chart */
+        .bar-container {
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center; width: 45px;
+        }
+        .bar-fill {
+            width: 100%; background: linear-gradient(to top, #1e3a8a, #3b82f6);
+            transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 4px 4px 0 0;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-screen relative">
+
+    <div id="start-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center modal-bg">
+        <h1 class="text-5xl md:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 mb-6 text-center drop-shadow-[0_0_20px_rgba(234,179,8,0.6)]">
+            Кто хочет стать<br>отличником?
+        </h1>
+        <p class="text-xl md:text-2xl text-blue-300 mb-10 font-semibold tracking-wide">Испытание по музыкальной теории</p>
+        <button onclick="startGame()" class="px-12 py-5 bg-gradient-to-r from-blue-800 to-blue-900 border-2 border-yellow-500 rounded-full text-2xl font-bold hover:shadow-[0_0_30px_rgba(234,179,8,0.8)] transition-all transform hover:scale-105 text-yellow-400">
+            ИГРАТЬ
+        </button>
+    </div>
+
+    <div class="flex-1 flex w-full max-w-[1600px] mx-auto p-4 md:p-8 relative">
+        
+        <!-- Left Column: Main Game Area -->
+        <div class="flex-1 flex flex-col relative z-10 pr-0 md:pr-8">
+            
+            <!-- Header: Title and Lifelines -->
+            <div class="flex justify-between items-center mb-8">
+                <div class="hidden md:block text-yellow-500 text-3xl font-extrabold tracking-widest drop-shadow-md">СОЛЬФЕДЖИО</div>
+                <div class="flex space-x-4 mx-auto md:mx-0">
+                    <button id="life-50" class="lifeline w-16 h-12 border-2 border-yellow-500 rounded-full bg-blue-950 text-yellow-400 font-bold text-lg flex items-center justify-center" onclick="use5050()" title="50 на 50">
+                        50:50
+                    </button>
+                    <button id="life-aud" class="lifeline w-16 h-12 border-2 border-yellow-500 rounded-full bg-blue-950 text-yellow-400 font-bold text-xl flex items-center justify-center" onclick="useAudience()" title="Помощь зала">
+                        👥
+                    </button>
+                    <button id="life-team" class="lifeline w-16 h-12 border-2 border-yellow-500 rounded-full bg-blue-950 text-yellow-400 font-bold text-xl flex items-center justify-center" onclick="useTeamCouncil()" title="Командный совет">
+                        ⏱️
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-1"></div>
+
+            <!-- Question Box -->
+            <div class="w-full mb-8 relative">
+                <div class="hex-border w-full flex items-center justify-center">
+                    <div class="question-box hex-shape w-full min-h-[140px] flex items-center justify-center p-6 px-12 relative z-10">
+                        <h2 id="question-text" class="text-2xl md:text-3xl text-center font-bold text-white drop-shadow-lg leading-tight">
+                            Загрузка...
+                        </h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Answers Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full pb-4" id="answers-container">
+                <!-- Answers will be dynamically injected here -->
+            </div>
+            
+            <!-- Bottom spacer for balance -->
+            <div class="h-4 md:h-12"></div>
+        </div>
+
+        <!-- Right Column: Prize Ladder -->
+        <div class="w-72 border-l-2 border-blue-900 pl-6 flex flex-col justify-end pb-12 hidden lg:flex relative z-10">
+            <h3 class="text-blue-400 font-bold uppercase tracking-widest mb-4 text-center text-sm">Школьные баллы</h3>
+            <div class="flex flex-col-reverse space-y-reverse space-y-1" id="ladder">
+                <!-- Ladder items injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Audience Poll Modal -->
+    <div id="modal-audience" class="absolute inset-0 z-40 hidden flex items-center justify-center modal-bg">
+        <div class="bg-blue-950 border-2 border-yellow-500 rounded-2xl p-8 max-w-lg w-11/12 shadow-[0_0_40px_rgba(37,99,235,0.4)] flex flex-col items-center">
+            <h3 class="text-3xl font-bold text-yellow-500 mb-8">Голосование класса</h3>
+            <div class="flex justify-around items-end h-56 w-full border-b-2 border-blue-800 pb-2 px-4">
+                <div class="bar-container"><div id="bar-0" class="bar-fill h-0"></div><span class="mt-3 text-yellow-400 font-bold text-xl">A</span><span class="text-sm font-semibold text-gray-300" id="pct-0">0%</span></div>
+                <div class="bar-container"><div id="bar-1" class="bar-fill h-0"></div><span class="mt-3 text-yellow-400 font-bold text-xl">B</span><span class="text-sm font-semibold text-gray-300" id="pct-1">0%</span></div>
+                <div class="bar-container"><div id="bar-2" class="bar-fill h-0"></div><span class="mt-3 text-yellow-400 font-bold text-xl">C</span><span class="text-sm font-semibold text-gray-300" id="pct-2">0%</span></div>
+                <div class="bar-container"><div id="bar-3" class="bar-fill h-0"></div><span class="mt-3 text-yellow-400 font-bold text-xl">D</span><span class="text-sm font-semibold text-gray-300" id="pct-3">0%</span></div>
+            </div>
+            <button onclick="closeModal('modal-audience')" class="mt-10 px-10 py-3 bg-gradient-to-r from-blue-700 to-blue-800 rounded-full text-white font-bold tracking-wide hover:shadow-[0_0_15px_rgba(234,179,8,0.5)] transition">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Team Timer Modal -->
+    <div id="modal-team" class="absolute inset-0 z-40 hidden flex items-center justify-center modal-bg">
+        <div class="bg-blue-950 border-2 border-yellow-500 rounded-3xl p-12 flex flex-col items-center shadow-[0_0_50px_rgba(234,179,8,0.3)]">
+            <h3 class="text-3xl font-bold text-yellow-500 mb-10">Командный совет</h3>
+            <div class="timer-circle" id="timer-display">30</div>
+            <p class="mt-8 text-xl text-blue-200 font-medium">Обсуждайте правильный ответ!</p>
+            <button onclick="stopTimer()" class="mt-10 px-8 py-3 bg-red-700 hover:bg-red-600 rounded-full text-white font-bold tracking-wide transition shadow-lg">Завершить обсуждение</button>
+        </div>
+    </div>
+
+    <!-- Game Over / Victory Modal -->
+    <div id="modal-result" class="absolute inset-0 z-50 hidden flex items-center justify-center modal-bg">
+        <div class="bg-gray-900 border-2 border-yellow-500 rounded-3xl p-10 md:p-16 max-w-2xl w-11/12 text-center shadow-[0_0_60px_rgba(234,179,8,0.4)]">
+            <h2 id="result-title" class="text-5xl md:text-6xl font-extrabold text-yellow-500 mb-6 drop-shadow-md">Игра окончена</h2>
+            <p class="text-2xl text-blue-200 mb-4 font-medium">Ваш итоговый счет:</p>
+            <p id="result-score" class="text-6xl md:text-7xl font-black text-green-400 mb-8 drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]">0</p>
+            <p id="result-comment" class="text-xl text-gray-300 mb-10 italic">Продолжайте изучать теорию музыки!</p>
+            <button onclick="location.reload()" class="px-12 py-5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-gray-900 rounded-full text-2xl font-bold transition shadow-[0_0_20px_rgba(234,179,8,0.5)] transform hover:scale-105">Играть снова</button>
+        </div>
+    </div>
+
+    <script>
+        // Database of all 23 facts grouped by approximate difficulty (1 = easy, 2 = medium, 3 = hard)
+        const allQuestions = [
+            // Difficulty 1: Easy definitions and basic counts
+            { q: "Сколько тонов в большой терции (б.3)?", opts: ["2 тона", "1.5 тона", "3 тона", "1 тон"], correct: 0, diff: 1 },
+            { q: "Сколько тонов содержит малая терция?", opts: ["1.5 тона", "2 тона", "1 тон", "0.5 тона"], correct: 0, diff: 1 },
+            { q: "Сколько звуков содержит пентатоника?", opts: ["5 звуков", "7 звуков", "6 звуков", "4 звука"], correct: 0, diff: 1 },
+            { q: "На какой ступени лада находится субдоминанта?", opts: ["На IV ступени", "На I ступени", "На V ступени", "На VII ступени"], correct: 0, diff: 1 },
+            { q: "На какой ступени лада находится доминанта?", opts: ["На V ступени", "На I ступени", "На IV ступени", "На VII ступени"], correct: 0, diff: 1 },
+            { q: "Что такое синкопа?", opts: ["Перенос ударения с сильной доли на слабую", "Ускорение темпа", "Удлинение ноты с точкой", "Деление доли на три части"], correct: 0, diff: 1 },
+            { q: "Что делает точка, поставленная справа от ноты?", opts: ["Удлиняет её наполовину", "Увеличивает её в два раза", "Уменьшает длительность наполовину", "Ничего не меняет"], correct: 0, diff: 1 },
+            { q: "Чему равны четыре шестнадцатые ноты по своей длительности?", opts: ["Одной четвертной", "Одной половинной", "Одной восьмой", "Одной целой"], correct: 0, diff: 1 },
+            { q: "Что такое триоль?", opts: ["Деление доли на 3 равные части вместо двух", "Аккорд из трех звуков", "Интервал в три тона", "Особый музыкальный размер"], correct: 0, diff: 1 },
+
+            // Difficulty 2: Intermediate rules and standard structures
+            { q: "Какой интервал получается при обращении чистой квинты?", opts: ["Чистая кварта", "Чистая октава", "Большая секста", "Малая терция"], correct: 0, diff: 2 },
+            { q: "Что такое тритон?", opts: ["Интервал, содержащий 3 тона (ув.4 или ум.5)", "Интервал из 3 полутонов", "Аккорд из трех звуков", "Деление доли на три части"], correct: 0, diff: 2 },
+            { q: "На какой ступени строится малый мажорный септаккорд (D7)?", opts: ["На V ступени", "На I ступени", "На IV ступени", "На VII ступени"], correct: 0, diff: 2 },
+            { q: "Из каких интервалов состоит уменьшенное трезвучие?", opts: ["Из двух малых терций", "Из двух больших терций", "Из большой и малой терций", "Из малой и большой терций"], correct: 0, diff: 2 },
+            { q: "Из чего состоит мажорное трезвучие (снизу вверх)?", opts: ["Большая терция + малая терция", "Малая терция + большая терция", "Две большие терции", "Две малые терции"], correct: 0, diff: 2 },
+            { q: "Как называется первое обращение трезвучия?", opts: ["Секстаккорд", "Квартсекстаккорд", "Септаккорд", "Нонаккорд"], correct: 0, diff: 2 },
+            { q: "Какие тональности называются параллельными?", opts: ["С общими знаками, но разными тониками", "С одинаковой тоникой, но разными знаками", "Мажор и минор без ключевых знаков", "Тональности с одинаковым ладом"], correct: 0, diff: 2 },
+            { q: "Сколько и какие знаки стоят при ключе в Ре мажоре и си миноре?", opts: ["Два диеза (фа-диез, до-диез)", "Один диез (фа-диез)", "Три диеза (фа, до, соль)", "Два бемоля (си-бемоль, ми-бемоль)"], correct: 0, diff: 2 },
+            { q: "Какие ступени лада являются неустойчивыми?", opts: ["II, IV, VI, VII", "I, III, V", "I, IV, V", "II, III, VI, VII"], correct: 0, diff: 2 },
+
+            // Difficulty 3: Advanced theory and edge cases
+            { q: "Как разрешаются увеличенные интервалы по правилу разрешения диссонансов?", opts: ["Расширяются", "Сужаются", "Переходят в чистые", "Остаются на месте"], correct: 0, diff: 3 },
+            { q: "Что такое квартсекстаккорд?", opts: ["Второе обращение трезвучия", "Первое обращение трезвучия", "Основной вид септаккорда", "Обращение септаккорда"], correct: 0, diff: 3 },
+            { q: "В каких ладах встречаются характерные интервалы?", opts: ["В гармонических", "В натуральных", "В мелодических", "В пентатонике"], correct: 0, diff: 3 },
+            { q: "Какие ступени повышаются в мелодическом миноре при движении вверх?", opts: ["VI и VII", "Только VII", "IV и V", "II и III"], correct: 0, diff: 3 },
+            { q: "Что такое дорийский лад?", opts: ["Минор с высокой VI ступенью", "Мажор с низкой VII ступенью", "Минор с низкой II ступенью", "Мажор с высокой IV ступенью"], correct: 0, diff: 3 }
+        ];
+
+        // Core Game Constants & Variables
+        const prizeLadder = [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000];
+        let currentLevel = 0; // 0 to 14
+        let guaranteedPrize = 0;
+        let isAnswering = false;
+        let gameQuestions = []; // Will hold the selected 15 questions
+        
+        // Lifelines state
+        let lifelines = { '5050': false, 'aud': false, 'team': false };
+
+        // Web Audio API context
+        let audioCtx;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        // Generic tone generator
+        function playTone(freq, type, duration, vol = 0.1, delay = 0) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+            
+            // Envelope to prevent clicking
+            gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+            gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + delay + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + duration);
+        }
+
+        // Sound effects mapping
+        const sfx = {
+            select: () => {
+                playTone(440, 'square', 0.1, 0.05);
+                playTone(660, 'square', 0.1, 0.05, 0.1);
+            },
+            correct: () => {
+                playTone(523.25, 'sine', 0.2, 0.1); // C
+                playTone(659.25, 'sine', 0.2, 0.1, 0.15); // E
+                playTone(783.99, 'sine', 0.4, 0.15, 0.3); // G
+                playTone(1046.50, 'triangle', 0.6, 0.2, 0.45); // High C
+            },
+            wrong: () => {
+                playTone(250, 'sawtooth', 0.5, 0.15);
+                playTone(230, 'sawtooth', 0.7, 0.2, 0.3);
+            },
+            win: () => {
+                [440, 554.37, 659.25, 880].forEach((f, i) => {
+                    playTone(f, 'square', 0.4, 0.1, i * 0.2);
+                });
+                setTimeout(() => {
+                    playTone(880, 'square', 0.8, 0.2);
+                    playTone(1108.73, 'triangle', 0.8, 0.2, 0.1);
+                }, 800);
+            },
+            tick: () => playTone(1000, 'sine', 0.05, 0.05)
+        };
+
+        function generateQuestionSet() {
+            // Bucket questions by difficulty
+            const easy = allQuestions.filter(q => q.diff === 1).sort(() => Math.random() - 0.5);
+            const med = allQuestions.filter(q => q.diff === 2).sort(() => Math.random() - 0.5);
+            const hard = allQuestions.filter(q => q.diff === 3).sort(() => Math.random() - 0.5);
+            
+            // Pick 5 from each bucket to make 15, naturally sorted by difficulty
+            const selected = [...easy.slice(0, 5), ...med.slice(0, 5), ...hard.slice(0, 5)];
+            
+            // Format for rendering (shuffle options but track the correct one)
+            return selected.map(q => {
+                const correctAnswerText = q.opts[q.correct];
+                let shuffledOpts = [...q.opts].sort(() => Math.random() - 0.5);
+                return {
+                    q: q.q,
+                    opts: shuffledOpts,
+                    correctIdx: shuffledOpts.indexOf(correctAnswerText)
+                };
+            });
+        }
+
+        function formatScore(num) {
+            return num.toLocaleString('ru-RU');
+        }
+
+        function buildLadder() {
+            const ladder = document.getElementById('ladder');
+            ladder.innerHTML = '';
+            for (let i = 0; i < prizeLadder.length; i++) {
+                const el = document.createElement('div');
+                const isSafe = (i === 4 || i === 9 || i === 14); // Level 5, 10, 15
+                el.className = `ladder-item text-right text-lg md:text-xl flex justify-between px-3 py-1 ${isSafe ? 'safe font-extrabold' : 'text-blue-200'}`;
+                el.innerHTML = `<span class="opacity-70 text-sm md:text-base mt-1">${i + 1}</span> <span>${formatScore(prizeLadder[i])}</span>`;
+                el.id = `ladder-${i}`;
+                ladder.appendChild(el);
+            }
+        }
+
+        function updateLadder() {
+            document.querySelectorAll('.ladder-item').forEach(el => el.classList.remove('active'));
+            if (currentLevel < prizeLadder.length) {
+                document.getElementById(`ladder-${currentLevel}`).classList.add('active');
+            }
+        }
+
+        function loadQuestion() {
+            isAnswering = false;
+            updateLadder();
+            
+            const qData = gameQuestions[currentLevel];
+            document.getElementById('question-text').innerText = qData.q;
+            
+            const letters = ['A', 'B', 'C', 'D'];
+            const container = document.getElementById('answers-container');
+            container.innerHTML = '';
+
+            qData.opts.forEach((optText, idx) => {
+                // Wrapper to apply hex border
+                const wrapper = document.createElement('div');
+                wrapper.className = "hex-border w-full";
+                wrapper.id = `wrapper-${idx}`;
+                
+                const btn = document.createElement('div');
+                btn.className = "answer-box hex-shape w-full h-full flex items-center px-6 py-4 md:py-5 min-h-[80px]";
+                btn.id = `ans-${idx}`;
+                btn.onclick = () => selectAnswer(idx);
+                
+                btn.innerHTML = `
+                    <span class="text-yellow-500 font-extrabold text-xl md:text-2xl mr-4 w-6 text-center drop-shadow-md">${letters[idx]}:</span>
+                    <span class="text-white text-lg md:text-xl font-semibold flex-1 leading-tight">${optText}</span>
+                `;
+                
+                wrapper.appendChild(btn);
+                container.appendChild(wrapper);
+            });
+        }
+
+        function selectAnswer(selectedIndex) {
+            if (isAnswering) return;
+            isAnswering = true;
+            initAudio();
+            
+            const qData = gameQuestions[currentLevel];
+            const btn = document.getElementById(`ans-${selectedIndex}`);
+            
+            // Visual feedback: Lock in answer
+            sfx.select();
+            btn.classList.add('selected');
+            
+            // Disable other buttons
+            document.querySelectorAll('.answer-box').forEach(el => el.classList.add('disabled'));
+
+            // Pause for dramatic effect
+            setTimeout(() => {
+                btn.classList.remove('selected');
+                
+                if (selectedIndex === qData.correctIdx) {
+                    // Correct
+                    sfx.correct();
+                    btn.classList.add('correct');
+                    
+                    // Update safe haven logic
+                    if (currentLevel === 4) guaranteedPrize = prizeLadder[4];
+                    if (currentLevel === 9) guaranteedPrize = prizeLadder[9];
+
+                    setTimeout(() => {
+                        currentLevel++;
+                        if (currentLevel >= prizeLadder.length) {
+                            endGame(true, prizeLadder[14]);
+                        } else {
+                            loadQuestion();
+                        }
+                    }, 2500);
+
+                } else {
+                    // Wrong
+                    sfx.wrong();
+                    btn.classList.add('wrong');
+                    // Reveal correct
+                    document.getElementById(`ans-${qData.correctIdx}`).classList.add('correct');
+                    
+                    setTimeout(() => {
+                        endGame(false, guaranteedPrize);
+                    }, 3500);
+                }
+            }, 2000);
+        }
+
+        function use5050() {
+            if (lifelines['5050'] || isAnswering) return;
+            initAudio();
+            lifelines['5050'] = true;
+            document.getElementById('life-50').classList.add('used');
+            sfx.select();
+            
+            const correctIdx = gameQuestions[currentLevel].correctIdx;
+            let wrongIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
+            
+            // Shuffle wrong indices and pick first two to hide
+            wrongIndices.sort(() => Math.random() - 0.5);
+            document.getElementById(`wrapper-${wrongIndices[0]}`).style.visibility = 'hidden';
+            document.getElementById(`wrapper-${wrongIndices[1]}`).style.visibility = 'hidden';
+        }
+
+        function useAudience() {
+            if (lifelines['aud'] || isAnswering) return;
+            initAudio();
+            lifelines['aud'] = true;
+            document.getElementById('life-aud').classList.add('used');
+            sfx.select();
+            
+            const correctIdx = gameQuestions[currentLevel].correctIdx;
+            let percentages = [0, 0, 0, 0];
+            let remaining = 100;
+            
+            // Determine confidence based on current level (higher level = lower audience accuracy)
+            const confidenceBase = currentLevel < 5 ? 65 : (currentLevel < 10 ? 45 : 30);
+            percentages[correctIdx] = confidenceBase + Math.floor(Math.random() * 20); // E.g., 65-85% for easy
+            if (percentages[correctIdx] > 100) percentages[correctIdx] = 100;
+            remaining -= percentages[correctIdx];
+
+            // Distribute remaining among active wrong answers
+            let activeWrongs = [0, 1, 2, 3].filter(i => i !== correctIdx);
+            // Account for 50:50
+            activeWrongs = activeWrongs.filter(idx => document.getElementById(`wrapper-${idx}`).style.visibility !== 'hidden');
+
+            if (activeWrongs.length === 1) {
+                percentages[activeWrongs[0]] = remaining;
+            } else if (activeWrongs.length > 1) {
+                percentages[activeWrongs[0]] = Math.floor(Math.random() * remaining);
+                percentages[activeWrongs[1]] = remaining - percentages[activeWrongs[0]];
+                if(activeWrongs[2]) percentages[activeWrongs[2]] = 0;
+            }
+
+            document.getElementById('modal-audience').classList.remove('hidden');
+            
+            // Animate bars
+            setTimeout(() => {
+                for (let i = 0; i < 4; i++) {
+                    document.getElementById(`bar-${i}`).style.height = `${percentages[i]}%`;
+                    document.getElementById(`pct-${i}`).innerText = `${percentages[i]}%`;
+                }
+            }, 100);
+        }
+
+        let timerInterval;
+        function useTeamCouncil() {
+            if (lifelines['team'] || isAnswering) return;
+            initAudio();
+            lifelines['team'] = true;
+            document.getElementById('life-team').classList.add('used');
+            document.getElementById('modal-team').classList.remove('hidden');
+            
+            let timeLeft = 30;
+            const display = document.getElementById('timer-display');
+            display.innerText = timeLeft;
+            display.style.color = '#eab308';
+            display.style.borderColor = '#eab308';
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                display.innerText = timeLeft;
+                sfx.tick();
+                
+                if (timeLeft <= 10) {
+                    display.style.color = '#ef4444';
+                    display.style.borderColor = '#ef4444';
+                }
+                
+                if (timeLeft <= 0) {
+                    stopTimer();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            closeModal('modal-team');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function endGame(won, score) {
+            document.getElementById('modal-result').classList.remove('hidden');
+            document.getElementById('result-score').innerText = formatScore(score);
+            
+            const title = document.getElementById('result-title');
+            const comment = document.getElementById('result-comment');
+            
+            if (won) {
+                sfx.win();
+                title.innerText = "ПОБЕДА!";
+                title.className = "text-6xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-green-300 to-green-600 mb-6 drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]";
+                comment.innerText = "Идеальное знание музыкальной теории! Вы настоящий маэстро!";
+            } else {
+                title.innerText = "ИГРА ОКОНЧЕНА";
+                title.className = "text-5xl md:text-6xl font-extrabold text-red-500 mb-6 drop-shadow-md";
+                if (score === 0) {
+                    comment.innerText = "Теория пока не дается. Нужно обязательно повторить материал!";
+                } else if (score < prizeLadder[9]) {
+                    comment.innerText = "Неплохое начало, но сложные темы требуют дополнительного изучения.";
+                } else {
+                    comment.innerText = "Отличный результат! Вы отлично разбираетесь в сольфеджио.";
+                }
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            // Enter fullscreen for classroom interactive boards
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            
+            // Reset state
+            currentLevel = 0;
+            guaranteedPrize = 0;
+            lifelines = { '5050': false, 'aud': false, 'team': false };
+            gameQuestions = generateQuestionSet();
+            
+            buildLadder();
+            loadQuestion();
+        }
+    </script>
+</body>
+</html>
